@@ -121,7 +121,7 @@ inline void shared_ptr<T>::swap(shared_ptr<T> & other) noexcept {
 
 template<typename T>
 inline void swap(shared_ptr<T> & a, shared_ptr<T> & b) noexcept {
-    std::swap(a, b);
+    a.swap(b);
 }
 
 template<typename T>
@@ -144,10 +144,80 @@ public:
 
     T* get() const noexcept;
     void reset(T*) noexcept;
+    void swap(linked_ptr<T> &) noexcept;
 
     template<typename U>
     friend void swap(linked_ptr<U> &, linked_ptr<U> &) noexcept;
 };
+
+template<typename T>
+constexpr linked_ptr<T>::linked_ptr() noexcept
+{}
+
+template<typename T>
+linked_ptr<T>::linked_ptr(linked_ptr<T> const & other) noexcept
+{}
+
+template<typename T>
+linked_ptr<T>::linked_ptr(linked_ptr<T> && other) noexcept
+{}
+
+template<typename T>
+linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> const & other) noexcept
+{
+    return *this;
+}
+
+template<typename T>
+linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> && other) noexcept
+{
+    return *this;
+}
+
+template<typename T>
+linked_ptr<T>::~linked_ptr() noexcept
+{}
+
+template<typename T>
+linked_ptr<T>::linked_ptr(T* ptr) noexcept
+{}
+
+template<typename T>
+T* linked_ptr<T>::operator ->() const noexcept
+{
+    return ptr_;
+}
+
+template<typename T>
+
+T& linked_ptr<T>::operator *() const noexcept
+{
+    return *ptr_;
+}
+
+template<typename T>
+T* linked_ptr<T>::get() const noexcept
+{
+    return ptr_;
+}
+
+template<typename T>
+void linked_ptr<T>::reset(T* ptr) noexcept
+{}
+
+template<typename T>
+void linked_ptr<T>::swap(linked_ptr<T> & other) noexcept
+{
+    std::swap(left_, other.left_);
+    std::swap(right_, other.right_);
+    std::swap(ptr_, other.ptr_);
+}
+
+template<typename T>
+void swap(linked_ptr<T> & a, linked_ptr<T> & b) noexcept
+{
+    a.swap(b);
+}
 
 } // pointers namespace
 

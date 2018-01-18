@@ -8,5 +8,7 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wall -pedantic -O2 -std=c++11")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -g -O0 -pedantic -std=c++1z -fsanitize=address,leak,undefined -DDEBUG")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -pedantic -std=c++1z -fsanitize=address,leak,undefined -D_GLIBCXX_DEBUG")
 endif()
+
+target_link_libraries(persistent_set pthread gtest_main gtest)
