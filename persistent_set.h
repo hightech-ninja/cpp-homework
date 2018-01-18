@@ -127,8 +127,8 @@ inline void swap(shared_ptr<T> & a, shared_ptr<T> & b) noexcept {
 template<typename T>
 class linked_ptr
 {
-    linked_ptr* left_;
-    linked_ptr* right_;
+    mutable linked_ptr const * left_;
+    mutable linked_ptr const * right_;
     T* ptr_;
 public:
     constexpr linked_ptr() noexcept;
@@ -152,34 +152,61 @@ public:
 
 template<typename T>
 constexpr linked_ptr<T>::linked_ptr() noexcept
+    : left_(nullptr), right_(nullptr), ptr_(nullptr)
 {}
 
 template<typename T>
 linked_ptr<T>::linked_ptr(linked_ptr<T> const & other) noexcept
-{}
+    : linked_ptr(other.ptr_)
+{
+    if (ptr_) {
+        if (other.left_ != nullptr) {
+            other.left_->right_ = this;
+            left_ = other.left_;
+        }
+        other.left_ = this;
+        right_ = &other;
+    }
+}
 
 template<typename T>
 linked_ptr<T>::linked_ptr(linked_ptr<T> && other) noexcept
-{}
+    : linked_ptr()
+{
+    swap(other);
+}
 
 template<typename T>
 linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> const & other) noexcept
 {
+    if (ptr_ != other.ptr_) {
+        linked_ptr<T> temp(other);
+        swap(temp);
+    }
     return *this;
 }
 
 template<typename T>
 linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> && other) noexcept
 {
+    swap(other);
     return *this;
 }
 
 template<typename T>
 linked_ptr<T>::~linked_ptr() noexcept
-{}
+{
+    if (left_)
+        left_->right_ = right_;
+    if (right_)
+        right_->left_ = left_;
+    if (left_ == right_)
+        delete ptr_;
+}
 
 template<typename T>
 linked_ptr<T>::linked_ptr(T* ptr) noexcept
+    : left_(nullptr), right_(nullptr), ptr_(ptr)
 {}
 
 template<typename T>
@@ -203,14 +230,27 @@ T* linked_ptr<T>::get() const noexcept
 
 template<typename T>
 void linked_ptr<T>::reset(T* ptr) noexcept
-{}
+{
+    linked_ptr<T> temp(ptr);
+    swap(temp);
+}
 
 template<typename T>
 void linked_ptr<T>::swap(linked_ptr<T> & other) noexcept
 {
-    std::swap(left_, other.left_);
-    std::swap(right_, other.right_);
-    std::swap(ptr_, other.ptr_);
+    if (ptr_ != other.ptr_) {
+        std::swap(left_, other.left_);
+        std::swap(right_, other.right_);
+        std::swap(ptr_, other.ptr_);
+        if (left_)
+            left_->right_ = this;
+        if (right_)
+            right_->left_ = this;
+        if (other.left_)
+            other.left_->right_ = &other;
+        if (other.right_)
+            other.right_->left_ = &other;
+    }
 }
 
 template<typename T>

@@ -119,6 +119,30 @@ TEST(SHARED_PTR_TESTS, swap_test)
     EXPECT_TRUE(p.get() && *p == 11261);
     EXPECT_TRUE(q.get() && *q == 11193);
 }
+TEST(SHARED_PTR_TESTS, wtf_test)
+{
+    shared_ptr<int> p(new int(1));
+    shared_ptr<int> q;
+    EXPECT_TRUE(q.get() == nullptr && p.get() && *p == 1 && p.count() == 1);
+    q = q;
+    EXPECT_TRUE(q.get() == nullptr && p.get() && *p == 1 && p.count() == 1);
+    p = p;
+    EXPECT_TRUE(q.get() == nullptr && p.get() && *p == 1 && p.count() == 1);
+    q = p;
+    EXPECT_TRUE(q.get() && p.get() && *p == 1 && *q == 1 && p.count() == 2);
+    p = q;
+    EXPECT_TRUE(q.get() && p.get() && *p == 1 && *q == 1 && p.count() == 2);
+    *p = 30;
+    EXPECT_TRUE(q.get() && p.get() && *p == 30 && *q == 30 && p.count() == 2);
+    shared_ptr<int> p1;
+    shared_ptr<int> p2(p1);
+    shared_ptr<int> p3(p1);
+    shared_ptr<int> p4(p2);
+    shared_ptr<int> p5(p3);
+    shared_ptr<int> p6;
+    p6 = p4;
+    p6 = p5;
+}
 //-------------------------------------------------------------------------
 TEST(LINKED_PTR_TESTS, nothrow_check)
 {
@@ -220,12 +244,36 @@ TEST(LINKED_PTR_TESTS, reset_test)
 TEST(LINKED_PTR_TESTS, swap_test)
 {
     linked_ptr<int> p(new int(11193)); // bitcoin price on 18.01.2018 3:58
-    linked_ptr<int> q(new int(11261)); // bitcoin price on 18.01.2018 3:58
+    linked_ptr<int> q(new int(11261)); // bitcoin price on 18.01.2018 4:05
     EXPECT_TRUE(p.get() && *p == 11193);
     EXPECT_TRUE(q.get() && *q == 11261);
     swap(p, q);
     EXPECT_TRUE(p.get() && *p == 11261);
     EXPECT_TRUE(q.get() && *q == 11193);
+}
+TEST(LINKED_PTR_TESTS, wtf_test)
+{
+    linked_ptr<int> p(new int(1));
+    linked_ptr<int> q;
+    EXPECT_TRUE(q.get() == nullptr && p.get() && *p == 1);
+    q = q;
+    EXPECT_TRUE(q.get() == nullptr && p.get() && *p == 1);
+    p = p;
+    EXPECT_TRUE(q.get() == nullptr && p.get() && *p == 1);
+    q = p;
+    EXPECT_TRUE(q.get() && p.get() && *p == 1 && *q == 1);
+    p = q;
+    EXPECT_TRUE(q.get() && p.get() && *p == 1 && *q == 1);
+    *p = 30;
+    EXPECT_TRUE(q.get() && p.get() && *p == 30 && *q == 30);
+    linked_ptr<int> p1;
+    linked_ptr<int> p2(p1);
+    linked_ptr<int> p3(p1);
+    linked_ptr<int> p4(p2);
+    linked_ptr<int> p5(p3);
+    linked_ptr<int> p6;
+    p6 = p4;
+    p6 = p5;
 }
 
 int main(int argc, char* argv[]) {
