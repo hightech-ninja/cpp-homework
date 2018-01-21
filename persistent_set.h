@@ -4,6 +4,12 @@
 #include <cstddef>  // for size_t, nullptr
 #include <utility>  // for swap
 #include <iostream> // for cerr
+#include <type_traits> // for is_default_constructable
+#include <random> // for mt19937
+
+namespace {
+    auto gen = std::mt19937();
+}
 
 namespace bezborodov {
 
@@ -156,7 +162,7 @@ constexpr linked_ptr<T>::linked_ptr() noexcept
 {}
 
 template<typename T>
-linked_ptr<T>::linked_ptr(linked_ptr<T> const & other) noexcept
+inline linked_ptr<T>::linked_ptr(linked_ptr<T> const & other) noexcept
     : linked_ptr(other.ptr_)
 {
     if (ptr_) {
@@ -170,14 +176,14 @@ linked_ptr<T>::linked_ptr(linked_ptr<T> const & other) noexcept
 }
 
 template<typename T>
-linked_ptr<T>::linked_ptr(linked_ptr<T> && other) noexcept
+inline linked_ptr<T>::linked_ptr(linked_ptr<T> && other) noexcept
     : linked_ptr()
 {
     swap(other);
 }
 
 template<typename T>
-linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> const & other) noexcept
+inline linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> const & other) noexcept
 {
     if (ptr_ != other.ptr_) {
         linked_ptr<T> temp(other);
@@ -187,14 +193,14 @@ linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> const & other) noexcept
 }
 
 template<typename T>
-linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> && other) noexcept
+inline linked_ptr<T>& linked_ptr<T>::operator =(linked_ptr<T> && other) noexcept
 {
     swap(other);
     return *this;
 }
 
 template<typename T>
-linked_ptr<T>::~linked_ptr() noexcept
+inline linked_ptr<T>::~linked_ptr() noexcept
 {
     if (left_)
         left_->right_ = right_;
@@ -205,38 +211,37 @@ linked_ptr<T>::~linked_ptr() noexcept
 }
 
 template<typename T>
-linked_ptr<T>::linked_ptr(T* ptr) noexcept
+inline linked_ptr<T>::linked_ptr(T* ptr) noexcept
     : left_(nullptr), right_(nullptr), ptr_(ptr)
 {}
 
 template<typename T>
-T* linked_ptr<T>::operator ->() const noexcept
+inline T* linked_ptr<T>::operator ->() const noexcept
 {
     return ptr_;
 }
 
 template<typename T>
-
-T& linked_ptr<T>::operator *() const noexcept
+inline T& linked_ptr<T>::operator *() const noexcept
 {
     return *ptr_;
 }
 
 template<typename T>
-T* linked_ptr<T>::get() const noexcept
+inline T* linked_ptr<T>::get() const noexcept
 {
     return ptr_;
 }
 
 template<typename T>
-void linked_ptr<T>::reset(T* ptr) noexcept
+inline void linked_ptr<T>::reset(T* ptr) noexcept
 {
     linked_ptr<T> temp(ptr);
     swap(temp);
 }
 
 template<typename T>
-void linked_ptr<T>::swap(linked_ptr<T> & other) noexcept
+inline void linked_ptr<T>::swap(linked_ptr<T> & other) noexcept
 {
     if (ptr_ != other.ptr_) {
         std::swap(left_, other.left_);
@@ -254,12 +259,90 @@ void linked_ptr<T>::swap(linked_ptr<T> & other) noexcept
 }
 
 template<typename T>
-void swap(linked_ptr<T> & a, linked_ptr<T> & b) noexcept
+inline void swap(linked_ptr<T> & a, linked_ptr<T> & b) noexcept
 {
     a.swap(b);
 }
 
 } // pointers namespace
+
+template <typename T, template<typename> class smart_ptr = pointers::shared_ptr>
+class persistent_set
+{
+public:
+    typedef T value_type;
+private:
+    struct node;
+    struct node_base {
+        smart_ptr<node> left_;
+
+        constexpr node_base() noexcept;
+        node_base(node_base const &) noexcept;
+        node_base(node_base &&) noexcept;
+        node_base& operator =(node_base const &) noexcept;
+        node_base& operator =(node_base &&) noexcept;
+        ~node_base() noexcept;
+
+        node_base(smart_ptr<node> const & left) noexcept;
+    };
+    struct node : node_base {
+        smart_ptr<node> right_;
+        value_type data_;
+        typename decltype(::gen)::result_type priority_;
+
+        node() = delete;
+        node(value_type && data)
+                noexcept(std::is_nothrow_move_constructible_v<value_type>);
+        node(smart_ptr<node> const & left,
+             smart_ptr<node> const & right,
+             value_type && data)
+                noexcept(std::is_nothrow_move_constructible_v<value_type>);
+    };
+public:
+    struct iterator
+    {
+        iterator(iterator const &) noexcept;
+        iterator& operator ++();
+        iterator& operator --();
+        iterator& operator ++(int);
+        iterator& operator --(int);
+
+        friend bool operator ==(iterator const & a, iterator const & b) noexcept {
+            return a.ptr_ == b.ptr_ && a.root_ == b.root_;
+        }
+        friend bool operator !=(iterator const & a, iterator const & b) noexcept {
+            return !(a == b);
+        }
+        T const& operator *() const;
+
+    private:
+        node_base const* root_;
+        node_base const* ptr_;
+        iterator(node_base const* , node_base const* ) noexcept;
+
+        friend struct persistent_set<T, smart_ptr>;
+    };
+
+    persistent_set() noexcept;
+    persistent_set(persistent_set<T, smart_ptr> const &) noexcept;
+    persistent_set(persistent_set<T, smart_ptr> &&) noexcept;
+    persistent_set<value_type, smart_ptr>& operator =(persistent_set<value_type,smart_ptr> const &) noexcept;
+    persistent_set<value_type, smart_ptr>& operator =(persistent_set<value_type, smart_ptr> &&) noexcept;
+    ~persistent_set() noexcept;
+
+    iterator find(const value_type &) noexcept;
+    std::pair<iterator, bool> insert(const value_type &);
+    std::pair<iterator, bool> insert(value_type &&);
+    void erase(iterator);
+
+    iterator begin() const noexcept;
+    iterator end() const noexcept;
+
+private:
+    node_base end_;
+    void split(smart_ptr<node> root, smart_ptr<node>& l, smart_ptr<node> & r);
+    smart_ptr<node> merge(smart_ptr<node>& l, smart_ptr<node>& r);
+};
 
 } // bezborodov namespace
 
